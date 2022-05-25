@@ -1,7 +1,6 @@
 package com.yidian.local.chat.utils
 
 import android.app.Activity
-import android.content.res.Configuration
 import android.graphics.Rect
 import android.graphics.drawable.ColorDrawable
 import android.view.Gravity
@@ -13,7 +12,6 @@ import android.widget.PopupWindow
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import com.yidian.common.utils.DensityUtil
-import com.yidian.news.ugcplug.utils.SystemBarUtil
 
 /**
  * Author: hy
@@ -29,9 +27,9 @@ class KeyboardStatusWatcher(
     private val rootView by lazy { activity.window.decorView.rootView }
 
     /**
-     * 可见区域高度
+     * 原始的可见区域高度
      */
-    private var visibleHeight = 0
+    private var originalVisibleHeight = 0
 
     /**
      * 软键盘是否显示
@@ -89,28 +87,21 @@ class KeyboardStatusWatcher(
         val rect = Rect()
         //获取当前可见区域
         popupView.getWindowVisibleDisplayFrame(rect)
-        if (visibleHeight == (rect.bottom - rect.top)) {
-            //可见区域高度不变时不必执行下面代码，避免重复监听
+        if(originalVisibleHeight == 0){
+            originalVisibleHeight = rect.height()
             return
-        } else {
-            visibleHeight = (rect.bottom - rect.top)
         }
-        //粗略计算高度的变化值，后面会根据状态栏和导航栏修正
-        val heightDiff = rootView.height - visibleHeight
-        //这里取了一个大概值，当窗口高度变化值超过屏幕的 1/3 时，视为软键盘弹出
-        if (heightDiff > DensityUtil.getScreenHeight() / 3) {
+        val heightDiff = originalVisibleHeight - rect.height()
+        //当窗口高度变化值超过屏幕的 1/3 时，视为软键盘弹出
+        if(heightDiff>DensityUtil.getScreenHeight() / 3){
             isKeyboardShowed = true
-            //非全屏时减去状态栏高度
-            keyboardHeight = heightDiff - SystemBarUtil.getStatusBarHeight(activity)
-            //导航栏显示时减去其高度，但横屏时导航栏在侧边，故不必扣除高度
-            if (activity.resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) {
-                keyboardHeight -= SystemBarUtil.getNavBarHeight(activity)
-            }
-        } else {
+            keyboardHeight = heightDiff
+            listener.invoke(isKeyboardShowed, keyboardHeight)
+        }else if(isKeyboardShowed){
             //软键盘隐藏时键盘高度为0
             isKeyboardShowed = false
             keyboardHeight = 0
+            listener.invoke(isKeyboardShowed, keyboardHeight)
         }
-        listener.invoke(isKeyboardShowed, keyboardHeight)
     }
 }
